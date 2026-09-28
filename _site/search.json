@@ -1,0 +1,30 @@
+[
+  {
+    "objectID": "about.html",
+    "href": "about.html",
+    "title": "About",
+    "section": "",
+    "text": "About this site"
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "About Me",
+    "section": "",
+    "text": "Hello! I’m Matthew Diekmann, junior math major at Pomona College.\nWelcome to my website!\nThis website was created for my Foundations of Data Science course and includes two data visualization projects using datasets from TidyTuesday."
+  },
+  {
+    "objectID": "index.html#what-youll-find-here",
+    "href": "index.html#what-youll-find-here",
+    "title": "About Me",
+    "section": "What you’ll find here",
+    "text": "What you’ll find here\nThe Data Viz menu contains two TidyTuesday analyses that use R to explore and visualize different datasets."
+  },
+  {
+    "objectID": "index.html#github",
+    "href": "index.html#github",
+    "title": "About Me",
+    "section": "GitHub",
+    "text": "GitHub\nThe code used to create this website is available on GitHub.\nView the GitHub repository"
+  }
+]

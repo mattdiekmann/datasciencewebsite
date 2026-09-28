@@ -1,0 +1,22 @@
+---
+title: "About Me"
+image: images/guatemala picture.jpg
+about:
+  template: jolla
+---
+
+Hello! I'm Matthew Diekmann, junior math major at Pomona College.
+
+Welcome to my website!
+
+This website was created for my Foundations of Data Science course and includes two data visualization projects using datasets from TidyTuesday.
+
+## What you'll find here
+
+The **Data Viz** menu contains two TidyTuesday analyses that use R to explore and visualize different datasets.
+
+## GitHub
+
+The code used to create this website is available on GitHub.
+
+[View the GitHub repository](YOUR-GITHUB-LINK-HERE)

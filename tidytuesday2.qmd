@@ -1,5 +1,122 @@
 ---
-title: "Untitled"
-format: html
+title: "NCAA Men's March Madness"
+description: |
+  Exploring historical Final Four success and public championship picks
+author: Matthew Diekmann
+date: September 28, 2026
+format:
+  html:
+    code-fold: true
+execute:
+  warning: false
+  message: false
 ---
 
+## About the Data
+
+For this analysis, I used the NCAA Men's March Madness dataset featured in
+[TidyTuesday](https://github.com/rfordatascience/tidytuesday/tree/main/data/2024/2024-03-26).
+
+The data come from Nishaan Amin's March Madness dataset and contain historical
+team tournament results along with public predictions for tournament teams.
+
+The data cover men's NCAA tournaments from 2008 through 2024, excluding 2020
+because the tournament was canceled.
+
+## Load the Data
+
+```{r}
+library(tidyverse)
+
+team_results <- readr::read_csv(
+  "https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2024/2024-03-26/team-results.csv"
+)
+
+public_picks <- readr::read_csv(
+  "https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2024/2024-03-26/public-picks.csv"
+)
+```
+
+## Which Teams Have Made the Most Final Fours?
+
+The `F4` variable gives the number of times each program reached the Final Four.
+I looked at the teams with the most Final Four appearances in the dataset.
+
+```{r}
+top_final_four <- team_results |>
+  filter(F4 > 0) |>
+  arrange(desc(F4)) |>
+  slice_head(n = 15)
+
+ggplot(
+  top_final_four,
+  aes(
+    x = reorder(TEAM, F4),
+    y = F4
+  )
+) +
+  geom_col() +
+  coord_flip() +
+  labs(
+    title = "Teams With the Most Final Four Appearances",
+    subtitle = "NCAA men's tournament results in the TidyTuesday dataset",
+    x = "Team",
+    y = "Final Four appearances"
+  ) +
+  theme_minimal()
+```
+
+This visualization shows which programs have reached the Final Four most often
+over the period represented in the dataset.
+
+## Which Teams Did the Public Most Expect to Win in 2024?
+
+The `public_picks` dataset contains the percentage of public brackets that
+picked each team to advance through each round of the 2024 tournament. The
+`FINALS` variable gives the percentage of people who picked each team to win
+the championship.
+
+I looked at the 10 teams with the highest championship pick percentages.
+
+```{r}
+top_public_picks <- public_picks |>
+  mutate(
+    finals_pct = readr::parse_number(FINALS)
+  ) |>
+  filter(!is.na(finals_pct)) |>
+  arrange(desc(finals_pct)) |>
+  slice_head(n = 10)
+
+ggplot(
+  top_public_picks,
+  aes(
+    x = reorder(TEAM, finals_pct),
+    y = finals_pct
+  )
+) +
+  geom_col() +
+  coord_flip() +
+  labs(
+    title = "Most Popular Public Picks to Win the 2024 Championship",
+    subtitle = "Top 10 teams by percentage of public brackets",
+    x = "Team",
+    y = "Percent of public brackets picking team to win"
+  ) +
+  theme_minimal()
+```
+
+Connecticut was the most popular public choice to win the championship in
+2024, while several other highly rated teams also received substantial support.
+This visualization shows how concentrated public expectations were among the
+top contenders.
+
+As a side note, UCONN went on to have one of the most dominant title runs in March Madness history, winning by a record average margin of 23 points per game.
+
+## Sources
+
+**TidyTuesday:**  
+[TidyTuesday — NCAA Men's March Madness](https://github.com/rfordatascience/tidytuesday/tree/main/data/2024/2024-03-26)
+
+**Original data:**  
+Amin, Nishaan. *March Madness Data*. Kaggle.
+[Original March Madness dataset](https://www.kaggle.com/datasets/nishaanamin/march-madness-data)

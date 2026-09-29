@@ -19,4 +19,4 @@ The **Data Viz** menu contains two TidyTuesday analyses that use R to explore an
 
 The code used to create this website is available on GitHub.
 
-[View the GitHub repository](YOUR-GITHUB-LINK-HERE)
+[View the GitHub repository](https://github.com/mattdiekmann/datasciencewebsite)

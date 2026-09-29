@@ -1,5 +1,115 @@
 ---
-title: "Untitled"
-format: html
+title: "Billboard Hot 100 Number Ones"
+description: |
+  Exploring song length and genre among Billboard Hot 100 number-one hits
+author: Matthew Diekmann
+date: September 28, 2026
+format:
+  html:
+    code-fold: true
+execute:
+  warning: false
+  message: false
 ---
 
+## About the Data
+
+For this analysis, I used the Billboard Hot 100 Number Ones dataset featured in
+[TidyTuesday](https://github.com/rfordatascience/tidytuesday/tree/main/data/2025/2025-08-26).
+
+The dataset contains information about songs that reached number one on the
+Billboard Hot 100 between 1958 and January 2025. It includes information about
+the songs' artists, genres, length, musical characteristics, and chart
+performance.
+
+The original dataset was compiled by Chris Dalla Riva as part of his
+[Billboard Hot 100 Number Ones Database](https://docs.google.com/spreadsheets/d/1j1AUgtMnjpFTz54UdXgCKZ1i4bNxFjf01ImJ-BqBEt0/edit).
+
+## Load the Data
+
+```{r}
+library(tidyverse)
+
+billboard <- readr::read_csv(
+  "https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2025/2025-08-26/billboard.csv"
+)
+
+topics <- readr::read_csv(
+  "https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2025/2025-08-26/topics.csv"
+)
+```
+
+## Have Number-One Songs Gotten Shorter?
+
+One question I was interested in was whether the length of number-one songs has
+changed over time. The dataset includes `length_sec`, which measures the length
+of each song in seconds. I converted this to minutes to make the visualization
+easier to interpret.
+
+```{r}
+billboard_length <- billboard |>
+  mutate(
+    year = as.integer(format(date, "%Y")),
+    length_min = length_sec / 60
+  ) |>
+  filter(!is.na(length_min))
+
+ggplot(
+  billboard_length,
+  aes(x = year, y = length_min)
+) +
+  geom_point(alpha = 0.35) +
+  geom_smooth(se = FALSE, method = "loess") +
+  labs(
+    title = "Length of Billboard Hot 100 Number-One Songs Over Time",
+    subtitle = "Each point represents a song that reached number one",
+    x = "Year",
+    y = "Song length (minutes)"
+  ) +
+  theme_minimal()
+```
+
+The trend line makes it easier to see how the typical length of a number-one
+song has changed over time. Song lengths increased during parts of the late
+20th century, but more recent number-one hits appear to have become shorter.
+
+## Which Genres Have the Most Number-One Hits?
+
+I also wanted to see which genres appear most frequently among number-one
+songs. The variable `cdr_genre` gives the genre assigned to each song in the
+dataset.
+
+```{r}
+top_genres <- billboard |>
+  filter(!is.na(cdr_genre)) |>
+  count(cdr_genre, sort = TRUE) |>
+  slice_head(n = 10)
+
+ggplot(
+  top_genres,
+  aes(
+    x = reorder(cdr_genre, n),
+    y = n
+  )
+) +
+  geom_col() +
+  coord_flip() +
+  labs(
+    title = "Genres With the Most Billboard Hot 100 Number-One Songs",
+    x = "Genre",
+    y = "Number of number-one songs"
+  ) +
+  theme_minimal()
+```
+
+This visualization shows which genres have accounted for the largest number of
+Billboard Hot 100 number-one songs in the dataset.
+
+## Sources
+
+**TidyTuesday:**  
+[TidyTuesday — Billboard Hot 100 Number Ones](https://github.com/rfordatascience/tidytuesday/tree/main/data/2025/2025-08-26)
+
+**Original data:**  
+Dalla Riva, Chris. *Billboard Hot 100 Number Ones Database*.  
+[Billboard Hot 100 Number Ones Database](https://docs.google.com/spreadsheets/d/1j1AUgtMnjpFTz54UdXgCKZ1i4bNxFjf01ImJ-BqBEt0/edit)

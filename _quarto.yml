@@ -7,6 +7,8 @@ website:
     right:
       - text: "Home"
         href: index.qmd
+      - text: "Shark Tank"
+        href: sharktank.qmd
       - text: "Data Viz"
         menu:
           - text: "TidyTuesday 1"

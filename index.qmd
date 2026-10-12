@@ -13,7 +13,7 @@ This website was created for my Foundations of Data Science course and includes 
 
 ## What you'll find here
 
-The **Data Viz** menu contains two TidyTuesday analyses that use R to explore and visualize different datasets.
+The **Shark Tank** tab has a text analysis of 415 *Shark Tank* pitches, attempting to discover trends for which types of products and pitches earn deals. The **Data Viz** menu contains two TidyTuesday analyses that use R to explore and visualize different datasets.
 
 ## GitHub
 

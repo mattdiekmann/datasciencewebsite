@@ -1,0 +1,457 @@
+
+---
+title: "What Gets a Deal on Shark Tank?"
+subtitle: "Exploring product industries and the language behind successful pitches"
+author: "Matthew Diekmann"
+format:
+  html:
+    code-fold: true
+    code-summary: "Show code"
+    toc: true
+    toc-depth: 2
+    embed-resources: true
+execute:
+  warning: false
+  message: false
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+library(tidyverse)
+library(stringr)
+library(forcats)
+library(scales)
+
+shark_tank <- read_csv(
+  "https://raw.githubusercontent.com/AlfonsoCabello/SharkTank/main/shark_tank.csv",
+  show_col_types = FALSE
+)
+```
+
+## Introduction
+
+I've always found *Shark Tank* interesting because entrepreneurs can walk into the room with completely different products, yet they're all trying to accomplish the same thing: convince an investor to make a deal. Some businesses are built around complicated technology, while others are selling relatively simple everyday products.
+
+For this project, I wanted to explore two questions:
+
+1. **Which product industries are most successful at securing deals?**
+2. **Are certain words or types of language associated with higher deal rates?**
+
+I'm especially interested in the second question. Entrepreneurs often emphasize how their products solve problems, save time, or make life easier. I wanted to see whether those themes actually show up in the data.
+
+## The Data
+
+I'm using a dataset of 415 pitches from *Shark Tank*, covering the show's first six seasons. It contains 31 variables, including the startup's name, product description, industry, and whether a deal was made.
+
+For this analysis, the most important variables are:
+
+- `title`: Name of the startup
+- `description`: Written description of the product or business
+- `category`: Product industry
+- `deal`: Whether a deal was made
+
+One important distinction is that these descriptions are not transcripts of the entrepreneurs' actual pitches. I'm analyzing the language used to describe their products, rather than exactly what was said on television.
+
+First, I wanted to get a general sense of the dataset.
+
+```{r}
+#| label: data-overview
+
+shark_tank |>
+  summarize(
+    pitches = n(),
+    industries = n_distinct(category, na.rm = TRUE),
+    average_description_words = round(
+      mean(str_count(description, "\\S+"), na.rm = TRUE),
+      1
+    ),
+    overall_deal_rate = round(mean(deal, na.rm = TRUE) * 100, 1)
+  )
+```
+
+There are 415 pitches across 54 product categories, with an overall deal rate of about 51.6%. The average product description contains roughly 36 words, giving us a reasonable amount of text to work with.
+
+## 1. Which Industries Get the Most Deals?
+
+My first question was whether certain types of businesses tend to perform better on *Shark Tank*.
+
+I calculated the percentage of pitches receiving deals within each industry. One issue I ran into was that some categories had only one or two pitches, which could produce misleadingly high success rates.
+
+To make the comparison more useful, I decided to focus on industries with at least 10 pitches.
+
+```{r}
+#| label: industry-summary
+
+industry_summary <- shark_tank |>
+  filter(!is.na(category), !is.na(deal)) |>
+  group_by(category) |>
+  summarize(
+    pitches = n(),
+    deals = sum(deal),
+    deal_rate = mean(deal) * 100,
+    .groups = "drop"
+  ) |>
+  arrange(desc(deal_rate))
+```
+
+```{r}
+#| label: industry-plot
+#| fig-width: 9
+#| fig-height: 6.5
+
+industry_summary |>
+  filter(pitches >= 10) |>
+  mutate(
+    category = fct_reorder(
+      paste0(category, " (n=", pitches, ")"),
+      deal_rate
+    )
+  ) |>
+  ggplot(aes(x = category, y = deal_rate)) +
+  geom_col(fill = "steelblue", width = 0.75) +
+  coord_flip() +
+  scale_y_continuous(
+    limits = c(0, 100),
+    breaks = seq(0, 100, 20)
+  ) +
+  labs(
+    title = "Shark Tank Deal Rates by Industry",
+    subtitle = "Industries with at least 10 pitches",
+    x = NULL,
+    y = "Pitches Receiving a Deal (%)",
+    caption = "Sample sizes shown in parentheses"
+  ) +
+  theme_minimal()
+```
+
+### What stood out?
+
+I was somewhat surprised by the results. Storage and Cleaning Products had the highest deal rate at **71.4%**, with 10 of 14 pitches receiving deals. Baby and Child Care followed at 60.9%, while Specialty Food had a 58.2% deal rate across 55 pitches.
+
+At the other end, Professional Services had a deal rate of only 20%, while Consumer Services came in at 25%.
+
+One possible explanation is that tangible consumer products are easier for investors to understand, demonstrate, and imagine selling at scale. That's just a hypothesis, though, and the data alone can't confirm it.
+
+It's also worth remembering that even the categories included here have relatively small sample sizes. These differences are interesting, but they don't necessarily mean one industry is inherently better than another.
+
+## 2. Does Product Language Relate to Deal Success?
+
+Next, I wanted to look beyond the industry categories and examine how the products themselves were described.
+
+I decided to search for five general themes:
+
+- **Technology:** technology, software, app, digital, device
+- **Health:** health, fitness, medical, wellness
+- **Convenience:** easy, simple, convenient, portable
+- **Innovation:** innovative, unique, patented, new
+- **Sustainability:** sustainable, reusable, recycled, eco-friendly
+
+Using `str_detect()` and regular expressions, I checked whether each description contained any of these words.
+
+```{r}
+#| label: language-themes
+
+word_summary <- shark_tank |>
+  filter(!is.na(description), !is.na(deal)) |>
+  mutate(
+    technology = str_detect(
+      description,
+      regex("\\b(technology|software|app|digital|device)\\b",
+            ignore_case = TRUE)
+    ),
+    health = str_detect(
+      description,
+      regex("\\b(health|fitness|medical|wellness)\\b",
+            ignore_case = TRUE)
+    ),
+    convenience = str_detect(
+      description,
+      regex("\\b(easy|simple|convenient|portable)\\b",
+            ignore_case = TRUE)
+    ),
+    innovation = str_detect(
+      description,
+      regex("\\b(innovative|unique|patented|new)\\b",
+            ignore_case = TRUE)
+    ),
+    sustainability = str_detect(
+      description,
+      regex("\\b(sustainable|reusable|recycled|eco-friendly)\\b",
+            ignore_case = TRUE)
+    )
+  ) |>
+  pivot_longer(
+    cols = c(
+      technology, health, convenience,
+      innovation, sustainability
+    ),
+    names_to = "theme",
+    values_to = "mentioned"
+  ) |>
+  filter(mentioned) |>
+  group_by(theme) |>
+  summarize(
+    pitches = n(),
+    deals = sum(deal),
+    deal_rate = mean(deal) * 100,
+    .groups = "drop"
+  ) |>
+  arrange(desc(deal_rate))
+```
+
+```{r}
+#| label: language-plot
+#| fig-width: 9
+#| fig-height: 5
+
+word_summary |>
+  mutate(
+    theme = fct_reorder(
+      paste0(str_to_title(theme), " (n=", pitches, ")"),
+      deal_rate
+    )
+  ) |>
+  ggplot(aes(x = theme, y = deal_rate)) +
+  geom_col(fill = "steelblue", width = 0.7) +
+  geom_hline(
+    yintercept = mean(shark_tank$deal, na.rm = TRUE) * 100,
+    linetype = "dashed",
+    color = "darkred"
+  ) +
+  coord_flip() +
+  scale_y_continuous(
+    limits = c(0, 100),
+    breaks = seq(0, 100, 20)
+  ) +
+  labs(
+    title = "Does Product Language Relate to Deal Success?",
+    subtitle = "Dashed line represents the overall deal rate",
+    x = NULL,
+    y = "Pitches Receiving a Deal (%)",
+    caption = "Themes can overlap; sample sizes shown in parentheses"
+  ) +
+  theme_minimal()
+```
+
+### What stood out?
+
+The biggest surprise was convenience-related language. Descriptions mentioning words like "easy," "simple," or "portable" had a **71.1% deal rate**, substantially higher than the overall average of 51.6%.
+
+Innovation-related language was associated with a 56.8% deal rate, while technology and health were both around 50%.
+
+Sustainability-related descriptions actually had the lowest deal rate of the five themes, at 36.8%.
+
+I found this interesting because I initially expected technology and innovation to perform especially well. Instead, the strongest association was with language suggesting that a product makes everyday life easier.
+
+Of course, these themes overlap, and the wording may reflect the types of products being described rather than something that directly influences investment decisions.
+
+## 3. A Closer Look at Convenience
+
+Since convenience stood out so much, I wanted to explore it further.
+
+First, I compared pitches that mentioned convenience-related words against pitches that didn't.
+
+```{r}
+#| label: convenience-comparison
+
+convenience_comparison <- shark_tank |>
+  filter(!is.na(description), !is.na(deal)) |>
+  mutate(
+    convenience = str_detect(
+      description,
+      regex(
+        "\\b(easy|simple|convenient|portable)\\b",
+        ignore_case = TRUE
+      )
+    )
+  ) |>
+  group_by(convenience) |>
+  summarize(
+    pitches = n(),
+    deals = sum(deal),
+    deal_rate = round(mean(deal) * 100, 1),
+    .groups = "drop"
+  ) |>
+  mutate(
+    convenience = if_else(
+      convenience,
+      "Convenience language",
+      "No convenience language"
+    )
+  )
+
+convenience_comparison |>
+  knitr::kable(
+    col.names = c(
+      "Description Type", "Pitches",
+      "Deals", "Deal Rate (%)"
+    ),
+    caption = "Deal outcomes by convenience-related language"
+  )
+```
+
+This comparison makes the difference even clearer. Pitches with convenience language received deals **71.1% of the time**, compared with **49.6%** for descriptions without those terms.
+
+That's a difference of 21.5 percentage points.
+
+I wanted to see whether one particular word was responsible for this difference, so I separated the four convenience terms.
+
+```{r}
+#| label: individual-words
+
+convenience_words <- shark_tank |>
+  filter(!is.na(description), !is.na(deal)) |>
+  mutate(
+    easy = str_detect(
+      description, regex("\\beasy\\b", ignore_case = TRUE)
+    ),
+    simple = str_detect(
+      description, regex("\\bsimple\\b", ignore_case = TRUE)
+    ),
+    convenient = str_detect(
+      description, regex("\\bconvenient\\b", ignore_case = TRUE)
+    ),
+    portable = str_detect(
+      description, regex("\\bportable\\b", ignore_case = TRUE)
+    )
+  ) |>
+  pivot_longer(
+    cols = c(easy, simple, convenient, portable),
+    names_to = "word",
+    values_to = "mentioned"
+  ) |>
+  filter(mentioned) |>
+  group_by(word) |>
+  summarize(
+    pitches = n(),
+    deals = sum(deal),
+    deal_rate = round(mean(deal) * 100, 1),
+    .groups = "drop"
+  ) |>
+  arrange(desc(deal_rate))
+
+convenience_words |>
+  knitr::kable(
+    col.names = c("Word", "Pitches", "Deals", "Deal Rate (%)"),
+    caption = "Deal rates for individual convenience-related words"
+  )
+```
+
+The results were especially interesting for "easy" and "simple." Both appeared in descriptions with a 75% deal rate. "Easy" appeared in 20 pitches, while "simple" appeared in 12.
+
+"Convenient" technically had a 100% deal rate, but it only appeared twice, so I wouldn't read much into that result. "Portable" had a 40% deal rate across five pitches.
+
+Overall, the findings suggest that products described as easy or simple may be worth investigating further, although the samples are too small to make strong predictions.
+
+### Looking at actual startup descriptions
+
+I also wanted to see some specific examples instead of relying entirely on averages.
+
+For this part, I used `str_extract()` to identify the first convenience-related word in each description, along with `str_count()` to measure description length.
+
+I used a regular expression with negative lookbehind and lookahead:
+
+- `(?<![a-z])` ensures the match is not immediately preceded by a letter.
+- `(?![a-z])` ensures the match is not immediately followed by a letter.
+
+These prevent the expression from accidentally matching parts of longer words.
+
+```{r}
+#| label: convenience-examples
+
+convenience_examples <- shark_tank |>
+  filter(!is.na(description)) |>
+  mutate(
+    word_count = str_count(description, "\\S+"),
+    convenience_word = str_extract(
+      str_to_lower(description),
+      "(?<![a-z])(easy|simple|convenient|portable)(?![a-z])"
+    )
+  ) |>
+  filter(!is.na(convenience_word)) |>
+  select(title, category, convenience_word, word_count, deal)
+
+convenience_examples |>
+  slice_head(n = 10) |>
+  knitr::kable(
+    col.names = c(
+      "Startup", "Industry", "Convenience Word",
+      "Description Words", "Deal"
+    ),
+    caption = "Examples of startups using convenience-related language"
+  )
+```
+
+Several successful products, including Ava the Elephant, Coverplay, and Lollacup, had descriptions containing "easy." However, other businesses using the same word did not receive deals.
+
+This was a useful reminder that no single word guarantees investment. The language might be associated with successful products, but investors are clearly considering much more than just how a product is described.
+
+## 4. Is Convenience Language More Common in Certain Industries?
+
+One possible explanation for the convenience finding is that these words might simply appear more frequently in industries that already have high deal rates.
+
+To explore this, I calculated how frequently convenience-related language appeared within each industry.
+
+```{r}
+#| label: industry-language
+
+industry_language <- shark_tank |>
+  filter(!is.na(description), !is.na(category), !is.na(deal)) |>
+  mutate(
+    convenience = str_detect(
+      description,
+      regex(
+        "\\b(easy|simple|convenient|portable)\\b",
+        ignore_case = TRUE
+      )
+    )
+  ) |>
+  group_by(category) |>
+  summarize(
+    pitches = n(),
+    convenience_pitches = sum(convenience),
+    convenience_pct = round(mean(convenience) * 100, 1),
+    deal_rate = round(mean(deal) * 100, 1),
+    .groups = "drop"
+  ) |>
+  filter(pitches >= 10) |>
+  arrange(desc(convenience_pct))
+
+industry_language |>
+  select(category, pitches, convenience_pct, deal_rate) |>
+  knitr::kable(
+    col.names = c(
+      "Industry", "Pitches",
+      "Convenience Mentions (%)", "Deal Rate (%)"
+    ),
+    caption = "Convenience language across product industries"
+  )
+```
+
+Interestingly, the industries that mentioned convenience most frequently weren't necessarily the ones with the highest deal rates.
+
+Toys and Games had the highest proportion of convenience-related descriptions at 25%, but its overall deal rate was only 43.8%. Meanwhile, Storage and Cleaning Products had the highest deal rate among the industries we examined, despite convenience language appearing in only 7.1% of its descriptions.
+
+This suggests that the relationship between convenience language and deal success isn't simply explained by the highest-performing industries using those words more often.
+
+However, this table doesn't establish whether the relationship holds within individual industries. There aren't enough convenience-related pitches in many categories to make reliable comparisons.
+
+## Conclusion
+
+Going into this project, I expected that businesses involving technology or innovative products might have the highest success rates on *Shark Tank*. Instead, I found that relatively practical industries, such as Storage and Cleaning Products, performed particularly well in this dataset.
+
+The most interesting result to me was the relationship between convenience-related language and deal outcomes. Descriptions mentioning words like "easy" or "simple" were associated with noticeably higher deal rates than descriptions without those terms.
+
+One possible interpretation is that investors value products that solve clear, everyday problems. However, this is only a possible explanation, not something the analysis proves.
+
+There are several limitations to keep in mind. The dataset covers only the first six seasons, the industry samples are sometimes small, and the product descriptions aren't necessarily the actual words used by entrepreneurs during their pitches. Additionally, factors like valuation, sales, profitability, and the entrepreneurs themselves likely play major roles in investment decisions.
+
+Ultimately, I think the most interesting takeaway is that a complicated or innovative product isn't necessarily more attractive to investors than a simple one. Sometimes the appeal of a business might come from how clearly it solves a problem. With a little extra research, I found that this idea is reflected among *Shark Tank's* all-time most succesful products. We see simple, effective items such as Scrub Daddy, Bombas socks, and DUDE Wipes.
+
+## Data Source
+
+The dataset comes from the public GitHub repository [AlfonsoCabello/SharkTank](https://github.com/AlfonsoCabello/SharkTank), specifically the [`shark_tank.csv` file](https://github.com/AlfonsoCabello/SharkTank/blob/main/shark_tank.csv).
+
+The repository contains structured information about pitches from the first six seasons of the television show *Shark Tank*, including startup descriptions, product categories, deal outcomes, and investment details.
